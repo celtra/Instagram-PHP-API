@@ -387,6 +387,37 @@ class Instagram {
   }
 
   /**
+   * Use pagination feature to get $limit amount of data items if original response from Instagram
+   * contains too few items or trim to the desired limit.
+   *
+   * @param  object  $result              Instagram response, for example of $this->getTagMedia()
+   * @param  integer $limit               (Optional) Number of items to return.
+   * @return object                       Result with $limit number of items.
+   */
+  public function limitResultOrFetchMoreData($result, $limit = null) {
+      if (isset($limit) && $limit > 0) {
+          if (!isset($result->data)) return $result;
+
+          while ($limit > count($result->data)) {
+              $nextResult = $this->pagination($result);
+              if (isset($nextResult)) {
+                // make another request to get more data
+                $result->data = array_merge($result->data, $this->pagination($result)->data);
+              } else {
+                break;
+              }
+          }
+
+          // we have too much items in response, trim to desired count
+          if ($limit < count($result->data)) {
+              $result->data = array_slice($result->data, 0, $limit);
+          }
+      }
+
+      return $result;
+  }
+
+  /**
    * Get the OAuth data of a user by the returned callback code
    *
    * @param string $code                  OAuth2 code variable (after a successful login)
