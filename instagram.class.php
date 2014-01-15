@@ -387,34 +387,41 @@ class Instagram {
   }
 
   /**
-   * Use pagination feature to get $limit amount of data items if original response from Instagram
-   * contains too few items or trim to the desired limit.
+   * Use pagination feature to get back [from, to] data items.
    *
    * @param  object  $result              Instagram response, for example of $this->getTagMedia()
-   * @param  integer $limit               (Optional) Number of items to return.
-   * @return object                       Result with $limit number of items.
+   * @param  integer $from                Offset from.
+   * @param  integer $to                  Offset to.
+   * @return object                       Result with ($to - $from + 1) number of items or less.
    */
-  public function limitResultOrFetchMoreData($result, $limit = null) {
-      if (isset($limit) && $limit > 0) {
-          if (!isset($result->data)) return $result;
+  public function getOffsetResults($result, $from, $to) {
+    if (($from || $to) && !($from && $to)) {
+      throw new Exception('Either both $from and $to need to be defined or none.');
+    }
 
-          while ($limit > count($result->data)) {
-              $nextResult = $this->pagination($result);
-              if (isset($nextResult)) {
-                // make another request to get more data
-                $result->data = array_merge($result->data, $this->pagination($result)->data);
-              } else {
-                break;
-              }
-          }
+    if ($to <= $from) {
+      throw new Exception('$to must be greater than $from');
+    }
 
-          // we have too much items in response, trim to desired count
-          if ($limit < count($result->data)) {
-              $result->data = array_slice($result->data, 0, $limit);
-          }
+    if (isset($to) && $to > 0) {
+      if (!isset($result->data)) return $result;
+
+      while ($to > count($result->data)) {
+        $nextResult = $this->pagination($result);
+        if (isset($nextResult)) {
+          // make another request to get more data
+          $result->data = array_merge($result->data, $this->pagination($result)->data);
+        } else {
+          break;
+        }
       }
 
-      return $result;
+      // slice by offset
+      $result->data = array_slice($result->data, $from, $to - $from + 1);
+
+    }
+
+    return $result;
   }
 
   /**
